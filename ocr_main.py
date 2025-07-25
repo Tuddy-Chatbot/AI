@@ -7,7 +7,7 @@ from PIL import Image
 import pdf_to_images
 import clean_for_llm
 import gemini_just_reorder
-
+#
 # 공통 설정
 key_path = os.path.expanduser("/home/key/rag_project_google_vision_service_account_key.json")
 credentials = service_account.Credentials.from_service_account_file(key_path)
