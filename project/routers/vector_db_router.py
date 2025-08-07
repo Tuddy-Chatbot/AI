@@ -13,7 +13,7 @@ from services.embedding.vector_db_service import (
 router = APIRouter()
 
 # 환경 설정
-BASE_DIR = "/rag_project/ocr_test/google_vision/project/output"
+BASE_DIR = "/app/output"
 INDEX_NAME = "rag-slides-index"
 
 # 공용 임베딩 모델 초기화
