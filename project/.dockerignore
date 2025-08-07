@@ -1,0 +1,33 @@
+# python cache
+__pycache__/
+*.pyc
+
+# 가상환경
+.venv/
+env/
+venv/
+
+# IDE 설정
+.vscode/
+.idea/
+
+# 실행 중 생성되는 output
+output/
+
+# 기타 불필요한 파일
+*.log
+*.tmp
+*.bak
+
+# 민감한 파일
+.env
+secrets/
+
+# 테스트 파일 (실행용)
+etc/
+
+# 테스트 결과
+.coverage
+htmlcov/
+.cache/
+pytest_cache/
