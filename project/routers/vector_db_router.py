@@ -28,7 +28,8 @@ async def add_documents(
     사용자별 namespace(user_id)에 문서 추가
     """
     try:
-        docs = load_slide_documents_from_folder(BASE_DIR, date_folder)
+        user_base_dir = os.path.join(BASE_DIR, user_id)
+        docs = load_slide_documents_from_folder(user_base_dir, date_folder)
         if not docs:
             raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
         
