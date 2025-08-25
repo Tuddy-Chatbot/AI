@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from routers import ocr_router, vector_db_router, chat_router
 
+# FastAPI 앱 생성
 app = FastAPI(title="RAG System API")
 
 # 라우터 등록

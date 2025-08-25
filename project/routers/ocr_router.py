@@ -13,9 +13,12 @@ async def process_pdf(
     # 사용자별 세션 디렉토리 생성
     session_dir = create_session_dir("output", user_id)
 
-    # 파일 저장 경로: output/{user_id}/{timestamp}_{filename}
+    # pdf 파일 저장 경로: output/{user_id}/{timestamp}/{timestamp}_{filename}
+    # basename는 경로의 가장 마지막 경로를 반환함
     pdf_path = os.path.join(session_dir, f"{os.path.basename(session_dir)}_{file.filename}")
+    # open으로 파일 생성
     with open(pdf_path, "wb") as f:
+        # 파일에 pdf 내용 작성
         f.write(await file.read())
 
     # 전체 파이프라인 실행

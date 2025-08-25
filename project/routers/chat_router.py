@@ -50,7 +50,11 @@ async def chat_endpoint(request: ChatRequest):
         context = " ".join([doc['content'] for doc in source_documents])
 
     # 3. LLM 서비스 호출하여 RAG 응답 생성
-    llm_response = await chat_with_llm(user_id=request.user_id, query=request.query, context=context)
+    llm_response = await chat_with_llm(
+        user_id=request.user_id,
+        query=request.query,
+        context=context
+    )
     
     return {
         "status": "success",
