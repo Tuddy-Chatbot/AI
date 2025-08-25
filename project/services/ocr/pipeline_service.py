@@ -43,5 +43,11 @@ def process_pdf_pipeline(pdf_path: str, session_dir: str):
     # 최종 파일 제외하고 임시파일 삭제
     for path in image_paths + upscaled_paths + ocr_json_paths + cleaned_txt_paths:
         remove_file_safely(path)
+        
+    # 삭제된 임시파일들은 results에서 삭제
+    for result in results:
+        result.pop("image", None)      # upscaled_path가 저장되어 있음
+        result.pop("ocr_json", None)
+        result.pop("cleaned_txt", None)
 
     return results
