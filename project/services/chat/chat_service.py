@@ -4,31 +4,29 @@ from services.ocr.gemini_service import call_gemini
 async def chat_with_llm(user_id: str, query: str, context: str) -> str:
     """
     RAG 컨텍스트를 사용하여 Gemini LLM과 채팅합니다.
+    강의 자료를 우선으로 하되, 필요하면 일반 지식으로 보강합니다.
     """
-    if not context:
-        # 컨텍스트가 없는 경우 일반적인 질문에 대한 답변을 유도
-        prompt = f"""
-        안녕하세요! 강의 자료에서는 관련 내용을 찾지 못했습니다.
-        사용자 질문: {query}
-        """
-    else:
-        # 사용자 질문과 벡터 DB에서 검색된 컨텍스트를 결합하여 Gemini에게 보낼 프롬프트를 생성
-        prompt = f"""
-        ---
-        제공된 강의 자료 컨텍스트:
-        {context}
-        ---
-        
-        위의 강의 자료 컨텍스트를 기반으로 다음 사용자 질문에 답변하세요.
-        만약 컨텍스트에 답변이 없는 경우, "강의 자료에서 관련 내용을 찾지 못했습니다."라고 답변하세요.
+    context_text = context if context else "없음"
 
-        사용자 질문: {query}
+    prompt = f"""
+        너는 나의 스터디 파트너야. 우리는 시험을 준비하기 위해 강의 자료를 같이 보면서 공부하고 있어.
+        너의 역할은:
+        1. 제공된 강의 자료를 최우선으로 참고해서 대화하듯 답하기
+        2. 강의 자료에 없으면 일반 지식으로 보강하되, 그 부분은 [일반 지식]이라고 표시하기
+        3. 단정 짓지 말고, 불확실하면 '추측입니다' 또는 '확실하지 않음'이라고 알려주기
+        4. 말투는 친구랑 같이 공부하는 느낌 (편안하지만 정확하게)
+
+        [강의 자료 컨텍스트]
+        {context_text}
+
+        [사용자 질문]
+        {query}
         """
-    
-    # 동기 함수인 call_gemini를 비동기적으로 실행
+
     try:
+        # 동기 함수인 call_gemini를 비동기적으로 실행
         response = await asyncio.to_thread(call_gemini, prompt)
         return response.strip()
     except Exception as e:
         print(f"Error calling Gemini API: {e}")
-        return "죄송합니다. 답변을 생성하는 데 문제가 발생했습니다."
+        return "미안해. 답변을 만드는 데 문제가 생겼어."
