@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query
 from typing import List
 import os
+import time
 
 from services.embedding.document_loader import load_slide_documents_from_folder
 from services.embedding.embedding_service import get_embedding_model
@@ -27,6 +28,8 @@ async def add_documents(
     """
     사용자별 namespace(user_id)에 문서 추가
     """
+    timing = {}
+    start_total = time.perf_counter()
     try:
         user_base_dir = os.path.join(BASE_DIR, user_id)
         docs = load_slide_documents_from_folder(user_base_dir, date_folder)
@@ -39,10 +42,13 @@ async def add_documents(
         return {
             "status": "success",
             "added_count": len(ids),
-            "namespace": user_id
+            "namespace": user_id,
+            "timing": timing
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        timing['total_time'] = round(time.perf_counter() - start_total, 3)
 
 
 @router.post("/vectordb/search")
@@ -54,6 +60,8 @@ async def search_in_vectordb(
     """
     사용자별 namespace(user_id) 내에서만 검색
     """
+    timing = {}
+    start_total = time.perf_counter()
     try:
         results = search_documents(
             embedding_model=embedding_model,
@@ -77,7 +85,10 @@ async def search_in_vectordb(
             "query": query,
             "namespace": user_id,
             "found_count": len(formatted_results),
-            "results": formatted_results
+            "results": formatted_results,
+            "timing": timing
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        timing['total_time'] = round(time.perf_counter() - start_total, 3)
