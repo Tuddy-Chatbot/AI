@@ -4,9 +4,8 @@ import os
 import time
 
 from services.embedding.document_loader import load_slide_documents_from_folder
-from services.embedding.embedding_service import get_embedding_model
 from services.embedding.vector_db_service import (
-    init_vector_store,
+    get_vector_store,
     add_documents_to_vector_db,
     search_documents
 )
@@ -17,11 +16,8 @@ router = APIRouter()
 BASE_DIR = "/app/output"
 INDEX_NAME = "rag-slides-index"
 
-# 공용 임베딩 모델 초기화
-embedding_model = get_embedding_model()
-
 @router.post("/vectordb/add")
-async def add_documents(
+async def add_documents_endpoint(
     user_id: str = Query(..., description="사용자 ID (namespace로 사용)"),
     date_folder: str = Query(..., description="슬라이드 JSON이 있는 날짜 폴더명")
 ):
@@ -36,8 +32,8 @@ async def add_documents(
         if not docs:
             raise HTTPException(status_code=404, detail="문서를 찾을 수 없습니다.")
         
-        vector_store = init_vector_store(embedding_model, INDEX_NAME, namespace=user_id)
-        ids = add_documents_to_vector_db(vector_store, docs)
+        vector_store = get_vector_store(INDEX_NAME, namespace=user_id)
+        ids = add_documents_to_vector_db(vector_store, docs, namespace=user_id)
 
         return {
             "status": "success",
@@ -64,7 +60,6 @@ async def search_in_vectordb(
     start_total = time.perf_counter()
     try:
         results = search_documents(
-            embedding_model=embedding_model,
             index_name=INDEX_NAME,
             namespace=user_id,
             query=query,

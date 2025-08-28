@@ -2,7 +2,6 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 from services.chat.chat_service import chat_with_llm
 from services.embedding.vector_db_service import search_documents
-from services.embedding.embedding_service import get_embedding_model
 import time
 
 router = APIRouter()
@@ -12,8 +11,6 @@ class ChatRequest(BaseModel):
     user_id: str
     query: str
 
-# 공용 임베딩 모델 초기화
-embedding_model = get_embedding_model()
 INDEX_NAME = "rag-slides-index"
 
 @router.post("/chat")
@@ -29,7 +26,6 @@ async def chat_endpoint(request: ChatRequest):
     start = time.perf_counter()
     try:
         search_results_raw = search_documents(
-            embedding_model=embedding_model,
             index_name=INDEX_NAME,
             namespace=request.user_id,
             query=request.query,
