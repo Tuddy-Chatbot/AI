@@ -16,3 +16,7 @@ app.include_router(normal_chat_router.router, prefix="/normal", tags=["Chat"])
 @app.get("/")
 def root():
     return {"message": "RAG API is running!"}
+
+@app.get("/health")
+def health():
+    return{"status": "ok"}
