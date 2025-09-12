@@ -1,4 +1,5 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+from typing import Optional
 from pydantic import BaseModel
 from services.chat.chat_service import chat_with_llm
 from services.embedding.vector_db_service import search_documents
@@ -9,14 +10,16 @@ router = APIRouter()
 # Pydantic 모델을 사용하여 요청 본문 정의
 class ChatRequest(BaseModel):
     user_id: str
+    session_id: Optional[str] = None   # ← optional
     query: str
+    n_turns: int = 6
 
 INDEX_NAME = "rag-slides-index"
 
 @router.post("/chat")
-async def chat_endpoint(request: ChatRequest):
+async def rag_chat_endpoint(request: ChatRequest):
     """
-    사용자의 질문을 기반으로 RAG(Retrieval-Augmented Generation) 챗봇 응답을 생성합니다.
+    RAG + 최근 히스토리 기반 챗
     """
     # 시간 로그
     timing = {}
@@ -25,7 +28,7 @@ async def chat_endpoint(request: ChatRequest):
     # 1. 벡터 데이터베이스에서 관련 문서 검색 (함수 직접 호출)
     start = time.perf_counter()
     try:
-        search_results_raw = search_documents(
+        results = search_documents(
             index_name=INDEX_NAME,
             namespace=request.user_id,
             query=request.query,
@@ -34,33 +37,36 @@ async def chat_endpoint(request: ChatRequest):
     except Exception as e:
         # 검색 실패 시, LLM에 컨텍스트 없이 질문
         print(f"Vector DB search failed: {e}")
-        search_results_raw = []
+        results = []
     finally:
         end = time.perf_counter()
         timing['vector_db_search'] = round(end - start, 3)
 
     # 2. 검색 결과를 바탕으로 LLM에 전달할 컨텍스트 생성
-    context = ""
     source_documents = []
-    if search_results_raw:
-        # 검색된 문서들의 내용을 하나의 문자열로 결합하고 출력을 위한 리스트 포맷
-        source_documents = [
-            {
-                "score": float(score),
-                "content": doc.page_content,
-                "metadata": doc.metadata
-            }
-            for doc, score in search_results_raw
-        ]
-        context = " ".join([doc['content'] for doc in source_documents])
+    context_chunks = []
+    for doc, score in results:
+        source_documents.append({
+            "page_content": doc.page_content,
+            "metadata": doc.metadata,
+            "score": float(score)
+        })
+        context_chunks.append(doc.page_content)
+
+    context_text = "\n\n".join(context_chunks)
 
     # 3. LLM 서비스 호출하여 RAG 응답 생성
     start = time.perf_counter()
     try:
+        # session_id 없을때 테스트 용
+        session_id = request.session_id or "local_test"
+        
         llm_response = await chat_with_llm(
             user_id=request.user_id,
+            session_id=session_id,
             query=request.query,
-            context=context
+            context=context_text,
+            n_turns=request.n_turns
         )
     finally:
         end = time.perf_counter()
@@ -71,6 +77,7 @@ async def chat_endpoint(request: ChatRequest):
     return {
         "status": "success",
         "user_id": request.user_id,
+        "session_id": request.session_id,
         "query": request.query,
         "response": llm_response,
         "source_documents": source_documents,
