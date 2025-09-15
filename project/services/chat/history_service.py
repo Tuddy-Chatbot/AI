@@ -57,7 +57,7 @@ def load_recent_turns(
     user_id: str, session_id: str, n_turns: int
 ) -> List[Tuple[str, str]]:
     hist = get_history(user_id, session_id)
-    messages: List[BaseMessage] = hist.messages
+    messages: List[BaseMessage] = hist.messages # 삽입순으로 정렬된걸 반환
 
     pairs: List[Tuple[str, str]] = []
     pending_human: Optional[str] = None
@@ -70,6 +70,7 @@ def load_recent_turns(
                 pending_human = None
 
     if n_turns > 0 and len(pairs) > n_turns:
+        # 슬라이싱으로 n_turns > 실제 pair 여도 문제 없음
         pairs = pairs[-n_turns:]
     return pairs
 
