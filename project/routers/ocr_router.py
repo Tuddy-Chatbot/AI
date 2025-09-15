@@ -2,6 +2,7 @@ from fastapi import APIRouter, UploadFile, File, Form
 import os
 from services.ocr.pipeline_service import process_pdf_pipeline
 from utils.file_utils import create_session_dir
+from services.convert.ppt_to_pdf_service import ensure_pdf, PPT2PDFError
 import time
 
 router = APIRouter()
@@ -20,16 +21,33 @@ async def process_pdf(
     
     start_total = time.perf_counter()
     
-    # open으로 파일 생성
+    # 1) 업로드 파일을 그대로 저장 
     with open(pdf_path, "wb") as f:
-        # 파일에 pdf 내용 작성
         f.write(await file.read())
 
-    # 전체 파이프라인 실행
+    # 2) PPT/PPTX이면 PDF로 변환 
+    #    - PDF면 그대로 경로 반환
+    #    - 변환 실패 시 명확한 에러 반환
+    start_conv = time.perf_counter()
+    try:
+        pdf_path = ensure_pdf(pdf_path, session_dir)
+    except PPT2PDFError as e:
+        # 변환 실패 시 기존 파이프라인 진입 전 에러 응답
+        return {
+            "status": "error",
+            "user_id": user_id,
+            "session_dir": session_dir,
+            "message": str(e)
+        }
+    end_conv = time.perf_counter()
+
+    # 3) 전체 파이프라인 실행 
     results, timing_pipeline = process_pdf_pipeline(pdf_path, session_dir)
     
     end_total = time.perf_counter()
-    timing_pipeline["total_time"] = round(end_total - start_total, 3)  # PDF 저장 + 파이프라인 전체 시간 포함
+    # 총 소요시간(업로드+변환+파이프라인) 기록 
+    timing_pipeline["ppt2pdf_time"] = round(end_conv - start_conv, 3)
+    timing_pipeline["total_time"] = round(end_total - start_total, 3)
 
     return {
         "status": "success",
