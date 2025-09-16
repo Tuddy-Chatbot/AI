@@ -26,7 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends poppler-utils \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 RUN apt-get update && apt-get install -y \
-  libreoffice-impress libreoffice-writer libreoffice-common \
+  libreoffice-impress libreoffice-common \
   fonts-noto-cjk \
   && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
