@@ -23,12 +23,16 @@ ENV TZ=Asia/Seoul
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 RUN apt-get update && apt-get install -y --no-install-recommends poppler-utils \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 RUN apt-get update && apt-get install -y \
   libreoffice-impress libreoffice-writer libreoffice-common \
   fonts-noto-cjk \
-  && rm -rf /var/lib/apt/lists/*
+  && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+ENV HOME=/home/app
+RUN useradd -m -d /home/app appuser && chown -R appuser:appuser /home/app
+USER appuser
 
 WORKDIR /app
 

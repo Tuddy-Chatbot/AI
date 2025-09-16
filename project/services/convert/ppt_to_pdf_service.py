@@ -22,6 +22,11 @@ def ensure_pdf(input_path: str, session_dir: str) -> str:
     os.makedirs(session_dir, exist_ok=True)
     base = os.path.splitext(os.path.basename(input_path))[0]
     out_pdf = os.path.join(session_dir, f"{base}.pdf")
+    
+    # LO 사용자 프로필 경로를 명시적으로 지정 (HOME 기반)
+    home = os.environ.get("HOME", "/tmp")
+    lo_profile = os.path.join(home, ".config", "libreoffice", "4")
+    os.makedirs(lo_profile, exist_ok=True)
 
     cmd = [
         "soffice",
@@ -32,6 +37,14 @@ def ensure_pdf(input_path: str, session_dir: str) -> str:
         "--outdir", session_dir,
         input_path,
     ]
+    
+    # 환경 변수로 캐시/런타임 디렉토리도 안전한 곳으로
+    env = os.environ.copy()
+    env.setdefault("XDG_CACHE_HOME", os.path.join(home, ".cache"))
+    env.setdefault("XDG_RUNTIME_DIR", os.path.join(home, ".run"))
+    os.makedirs(env["XDG_CACHE_HOME"], exist_ok=True)
+    os.makedirs(env["XDG_RUNTIME_DIR"], exist_ok=True)
+    
     res = subprocess.run(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
     )
