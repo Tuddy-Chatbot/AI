@@ -1,5 +1,5 @@
 import asyncio
-from typing import List, Tuple
+from typing import List, Tuple, Optional, Dict
 from services.ocr.gemini_service import call_gemini
 from services.chat.history_service import load_recent_turns, append_turn
 
@@ -16,28 +16,9 @@ def _format_history_for_prompt(pairs: List[Tuple[str, str]]) -> str:
         lines.append(f"Assistant: {a}")
     return "\n".join(lines)
 
-async def chat_with_llm(
-    user_id: str,
-    session_id: str,
-    query: str,
-    context: str,
-    n_turns: int
-) -> str:
-    """
-    RAG 컨텍스트 + 최근 N턴 히스토리를 반영하여 Gemini 호출
-    """
-    context_text = context or "없음"
-    
-    # n_turns 가드 (0이면 히스토리 주입 끔, 상한 50)
-    effective_n = max(0, min(n_turns, 50))
-    if effective_n == 0:
-        recent_pairs = []
-    else:
-        recent_pairs = load_recent_turns(user_id, session_id, effective_n)
-
-    history_block = _format_history_for_prompt(recent_pairs)
-
-    prompt = f"""
+def _build_text_prompt(history_block: str, context_text: str, query: str, effective_n: int) -> str:
+    """텍스트 전용 요청을 위한 프롬프트"""
+    return f"""
 너는 나의 스터디 파트너야. 우리는 시험을 준비하기 위해 강의 자료를 같이 보면서 공부하고 있어.
 
 [대화 히스토리 (최근 {effective_n}턴)]
@@ -56,9 +37,59 @@ async def chat_with_llm(
 {query}
 """.strip()
 
+def _build_multimodal_prompt(history_block: str, context_text: str, query: str, effective_n: int) -> str:
+    """이미지 + 텍스트 요청을 위한 프롬프트"""
+    return f"""
+너는 나의 스터디 파트너이자 이미지 분석가야. 우리는 강의 자료와 이미지를 함께 보며 공부하고 있어.
+
+[대화 히스토리 (최근 {effective_n}턴)]
+{history_block}
+
+[강의 자료 컨텍스트]
+{context_text}
+
+[지시사항]
+1. **제공된 이미지를 최우선으로, 가장 중요하게 분석**해서 답변을 생성해줘.
+2. 이미지 분석 후, 필요하다면 강의 자료 컨텍스트를 참고하여 답변을 보충해줘.(만약 참고했다면 참고한 강의 자료의 출처 명시 ex) [슬라이드 6])
+3. 말투는 스터디 파트너랑 같이 공부하는 느낌 (편안하지만 정확하게)
+
+[사용자 질문]
+{query}
+""".strip()
+
+async def chat_with_llm(
+    user_id: str,
+    session_id: str,
+    query: str,
+    context: str,
+    n_turns: int,
+    images: Optional[List[Dict]] = None
+) -> str:
+    """
+    RAG 컨텍스트 + 최근 N턴 히스토리를 반영하여 Gemini 호출
+    """
+    
+    # n_turns 가드 (0이면 히스토리 주입 끔, 상한 50)
+    effective_n = max(0, min(n_turns, 50))
+    if effective_n == 0:
+        recent_pairs = []
+    else:
+        recent_pairs = load_recent_turns(user_id, session_id, effective_n)
+
+    history_block = _format_history_for_prompt(recent_pairs)
+    context_text = context or "없음"
+    
+    # 이미지 유무에 따라 적절한 프롬프트 빌더 함수 호출
+    if images:
+        prompt = _build_multimodal_prompt(history_block, context_text, query, effective_n)
+    else:
+        prompt = _build_text_prompt(history_block, context_text, query, effective_n)
+
     try:
         # 동기 함수인 call_gemini를 비동기적으로 실행
-        response = await asyncio.to_thread(call_gemini, prompt)
+        response = await asyncio.to_thread(
+            call_gemini, prompt, images=images
+        )
         answer = response.strip()
         # 히스토리에 이번 턴 저장
         append_turn(user_id, session_id, query, answer)

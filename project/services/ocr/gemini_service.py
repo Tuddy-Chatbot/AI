@@ -1,4 +1,6 @@
 import os, requests, json, re
+import base64
+from typing import Optional, List, Dict
 from utils.env_utils import GEMINI_KEY
 
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
@@ -23,10 +25,27 @@ def build_prompt(text: str) -> str:
 본문: [재정렬된 본문]
 """
 
-def call_gemini(prompt: str) -> str:
+def call_gemini(prompt: str, images: Optional[List[Dict]] = None) -> str:
     headers = {"Content-Type": "application/json"}
     params = {"key": GEMINI_KEY}
-    data = {"contents":[{"parts":[{"text":prompt}]}]}
+    
+    parts = [{"text": prompt}]
+    if images:
+        for image_data in images:
+            image_bytes = image_data.get("data")
+            mime_type = image_data.get("mime_type")
+            
+            if image_bytes and mime_type:
+                encoded_image = base64.b64encode(image_bytes).decode('utf-8')
+                parts.append({
+                    "inline_data": {
+                        "mime_type": mime_type,
+                        "data": encoded_image
+                    }
+                })
+        
+    data = {"contents":[{"parts": parts}]}
+    
     resp = requests.post(API_URL, headers=headers, params=params, json=data)
     resp.raise_for_status()
     return resp.json()["candidates"][0]["content"]["parts"][0]["text"]
