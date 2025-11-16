@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-
+# ocr 결과 저장
 def create_session_dir(root: str = "output", user_id: str = None) -> str:
     timestamp = datetime.now().strftime("%y%m%d-%H%M%S")
     if user_id:
